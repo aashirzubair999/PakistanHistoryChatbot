@@ -6,7 +6,7 @@ from utils.prompt import SYSTEM_PROMPT, NEWS_KEYWORDS
 
 # from rag_handler import query_rag, create_embeddings
 # from web_search_handler import query_web
-# from news_handler import query_news
+from news_handler import query_news
 from sensitive_handler import is_sensitive, send_admin_email
 import os
 
@@ -41,8 +41,8 @@ async def chat_endpoint(data: UserQuery):
         return send_admin_email(data.user_name, data.user_email, user_query)
 
     # 2. Check news
-    # if any(word.lower() in user_query.lower() for word in NEWS_KEYWORDS):
-    #     return query_news(user_query)
+    if any(word.lower() in user_query.lower() for word in NEWS_KEYWORDS):
+        return query_news(user_query)
 
     # # 3. RAG document query
     # rag_response = query_rag(user_query, vectordb)
