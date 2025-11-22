@@ -1,3 +1,4 @@
+import re
 from langchain_openai import ChatOpenAI
 from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES, NEWS_KEYWORDS
 
@@ -5,7 +6,7 @@ from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES, NEWS_KEYWORDS
 
 
 def query_news(user_query: str):
-    print("Helloooooooooooooooo1")
+    print("Hello from query_news")
     llm = ChatOpenAI(
     model_name="gpt-4o-mini",
     temperature=0,
@@ -24,9 +25,17 @@ def query_news(user_query: str):
     """
 
     answer = llm.invoke(prompt)
+
+    answer_text = "".join(block["text"] for block in answer.content if block.get("type") == "text")
+    print("Answer:", answer_text)
+    
+    # Extract all URLs from Markdown-style links [text](url)
+    urls = re.findall(r'\((https?://[^\s)]+)\)', answer_text)
+
+
     print("anser:",answer)
     return {
         "answer": "".join(block["text"] for block in answer.content if block.get("type") == "text"),
-        "source": "Web / News",
+        "source": urls if urls else ["Web / News"],
         "type": "News"
     }

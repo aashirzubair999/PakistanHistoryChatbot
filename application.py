@@ -25,10 +25,6 @@ class UserQuery(BaseModel):
     user_email: str = None
 
 
-# Load all vector stores (docx, txt, pdf)
-vectordbs = load_vectordbs(base_dir="vectorstores")
-print(f"Loaded vector databases: {list(vectordbs.keys())}")
-
 
 @application.post("/chat")
 async def chat_endpoint(data: UserQuery):
@@ -46,6 +42,10 @@ async def chat_endpoint(data: UserQuery):
         return query_news(user_query)
 
     # 3. RAG document query (searches all vector stores)
+    
+    vectordbs = load_vectordbs(base_dir="vectorstores") # Load all vector stores (docx, txt, pdf)
+    print(f"Loaded vector databases: {list(vectordbs.keys())}")
+
     rag_response = query_rag(user_query, vectordbs)
 
     if rag_response and rag_response.get("answer"):

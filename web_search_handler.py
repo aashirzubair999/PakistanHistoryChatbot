@@ -4,7 +4,7 @@ from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES
 
 
 def query_web(user_query: str):
-    print("Helloooooooooooooooo1")
+    print("Hello from query_web")
     llm = ChatOpenAI(
         model_name="gpt-4o-mini",
         temperature=0,
@@ -32,5 +32,6 @@ def query_web(user_query: str):
 
     return {
         "answer": answer_text,
-        "source": urls if urls else ["Web / Search"]
+        "source": urls if urls else ["Web / Search"],
+        "type": "Web Search"
     }
