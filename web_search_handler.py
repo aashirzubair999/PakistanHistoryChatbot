@@ -1,6 +1,7 @@
 import re
 from langchain_openai import ChatOpenAI
-from utils.prompt import SYSTEM_PROMPT
+from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES
+
 
 def query_web(user_query: str):
     print("Helloooooooooooooooo1")
@@ -15,7 +16,9 @@ def query_web(user_query: str):
     The user asked: "{user_query}".
     Search for real-time news related to Pakistan only not any other country.
     Summarize the results clearly.
-    Important: Include the source links as well.
+    Important: Include the source links as well,     Not search from any other sourse just find form the trusted sourses as given  {', '.join(TRUSTED_SOURCES)}.
+    Only Search from trusted sources: {', '.join(TRUSTED_SOURCES)}.
+
     """
 
     answer_obj = llm.invoke(prompt)

@@ -6,8 +6,16 @@ If the news is asked for any other country, simply respond with "I only provide 
 Always label your source: Document / Web / News.
 """
 
-SENSITIVE_KEYWORDS = ["army", "special forces", "ISPR operations"]
-NEWS_KEYWORDS = ["latest", "today", "breaking", "update", "recent"]
+SENSITIVE_KEYWORDS = [
+    "army", "military", "special forces", "ISPR operations", "intelligence", "classified",
+    "security forces", "navy", "air force", "covert", "counter-terrorism", "secret mission",
+    "defense strategy", "war operations", "troop movement", "confidential report"]
+
+NEWS_KEYWORDS = [
+    "latest", "today", "breaking", "update", "recent", "headlines", "news", "report",
+    "current events", "announced", "alert", "live", "press release", "trending", "coverage",
+    "bulletin", "developments"]
+
 
 TRUSTED_SOURCES = [
     "dawn.com", "tribune.com.pk", "arynews.tv", 
