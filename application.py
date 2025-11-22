@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from utils.prompt import SYSTEM_PROMPT, NEWS_KEYWORDS
 
 from rag_handler import query_rag, load_vectordbs
-# from web_search_handler import query_web
+from web_search_handler import query_web
 from news_handler import query_news
 from sensitive_handler import is_sensitive, send_admin_email
 import os
@@ -47,11 +47,10 @@ async def chat_endpoint(data: UserQuery):
 
     # 3. RAG document query (searches all vector stores)
     rag_response = query_rag(user_query, vectordbs)
-    print("rag_response:", rag_response)
+
     if rag_response and rag_response.get("answer"):
         return rag_response
+    else:
+        print("RAG did not find anything. Falling back to web search...")
+        return query_web(user_query)   # send original user query, not RAG result!
 
-    # 4. Fallback to web search (if needed)
-    # return query_web(user_query)
-    
-    return {"message": "No relevant information found."}

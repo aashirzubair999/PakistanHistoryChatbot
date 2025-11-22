@@ -108,7 +108,8 @@ def query_rag(user_query, vectordbs):
 
     # No answers anywhere
     return {
-        "answer": "No relevant information found.",
-        "sources": [],
-        "from": None
-    }
+    "answer": None,
+    "sources": [],
+    "from": None
+}
+
