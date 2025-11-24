@@ -1,0 +1,17 @@
+pip install langchain-openai
+pip install -qU "langchain-chroma>=0.1.2" chromadbpip install langchain-openai
+pip install langchain-openai
+pip install langchain-openai
+pip install -qU langchain-community pypdf
+pip install -qU docx2txt
+pip install langchain-community
+
+
+
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# Vector DB and embeddings
+from langchain_chroma import Chroma 
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.chains import RetrievalQA

@@ -1,6 +1,6 @@
 import re
 from langchain_openai import ChatOpenAI
-from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES, NEWS_KEYWORDS
+from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES
 
 
 
