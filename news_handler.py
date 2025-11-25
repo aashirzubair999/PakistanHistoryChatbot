@@ -3,8 +3,6 @@ from langchain_openai import ChatOpenAI
 from utils.prompt import SYSTEM_PROMPT, TRUSTED_SOURCES
 
 
-
-
 def query_news(user_query: str):
     print("Hello from query_news")
     llm = ChatOpenAI(

@@ -5,83 +5,115 @@ import os
 from utils.prompt import SENSITIVE_KEYWORDS
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Email credentials stored in environment variables
-sender_email = os.getenv("BOT_EMAIL")                 # Bot email address (Gmail)
-recipient_email = os.getenv("ADMIN_EMAIL")            # Admin email address (receiver)
-bot_password = os.getenv("BOT_EMAIL_APP_PASSWORD")    # Gmail App Password (not normal password)
+# Email credentials
+sender_email = os.getenv("BOT_EMAIL")
+recipient_email = os.getenv("ADMIN_EMAIL")
+bot_password = os.getenv("BOT_EMAIL_APP_PASSWORD")
 
 
+# -------------------------------------------------------------
+# CHECK SENSITIVE QUERY (Safe)
+# -------------------------------------------------------------
 def is_sensitive(query: str):
-    """
-    Checks if the incoming query contains sensitive keywords.
-    Returns True if any keyword from SENSITIVE_KEYWORDS 
-    exists inside the user query.
-    """
-    return any(word.lower() in query.lower() for word in SENSITIVE_KEYWORDS)
+    try:
+        if not query:
+            return False
+        return any(word.lower() in query.lower() for word in SENSITIVE_KEYWORDS)
+    except Exception as e:
+        print(f"Error checking sensitive query: {e}")
+        return False
 
 
+
+# -------------------------------------------------------------
+# SEND NOTIFICATION EMAIL TO ADMIN (Safe)
+# -------------------------------------------------------------
 def send_admin_email(user_name, user_email, query):
-    """
-    Sends an email to the admin when a sensitive query is detected.
-
-    Steps:
-    1. Prepare the email message (user details + query + timestamp)
-    2. Connect to Gmail SMTP server and send email (if credentials exist)
-    3. If email cannot be sent, print a log message instead
-    """
-    
-    # Current time for logging/notification
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Email content body
-    body = f"""
-    Sensitive Query Detected:
-    User Name: {user_name}
-    User Email: {user_email}
-    Query: {query}
-    Timestamp: {timestamp}
-    """
-    
-    # Create the email object
-    msg = MIMEText(body)
-    msg['Subject'] = "Sensitive Query Notification"
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-    
-    # Only attempt sending if all email credentials are available
-    if sender_email and recipient_email and bot_password:
+    # Build email body safely
+    try:
+        body = f"""
+        Sensitive Query Detected:
+
+        User Name: {user_name}
+        User Email: {user_email}
+        Query: {query}
+        Timestamp: {timestamp}
+        """
+    except Exception as e:
+        print(f"Failed to create email body: {e}")
+        body = "Sensitive query detected, but failed to format details."
+
+    # Try to create email message
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = "Sensitive Query Notification"
+        msg['From'] = sender_email or "unknown"
+        msg['To'] = recipient_email or "unknown"
+    except Exception as e:
+        print(f"Failed to create email message: {e}")
+        return {
+            "message": "Failed to prepare email message.",
+            "timestamp": timestamp
+        }
+
+    # -------------------------------------------------------------
+    # Validate environment variables first
+    # -------------------------------------------------------------
+    if not sender_email or not recipient_email or not bot_password:
+        print("⚠ Missing email credentials. Logging instead of sending.")
+        print(body)
+
+        return {
+            "message": "Credentials missing — logged instead of sending email.",
+            "timestamp": timestamp
+        }
+
+    # -------------------------------------------------------------
+    # TRY SENDING EMAIL
+    # -------------------------------------------------------------
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+        server.starttls()
+
         try:
-            # Connect to Gmail SMTP server
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()  # Enable TLS security
-
-            # Login using bot email + app password
             server.login(sender_email, bot_password)
-
-            # Send the email
-            server.send_message(msg)
-            server.quit()
-
-            print("Email sent successfully")
-        
         except Exception as e:
-            # If email fails, log the error and return appropriate message
-            print("Failed to send email:", e)
+            print(f"SMTP Login failed: {e}")
             return {
-                "message": "Failed to send email, logged instead",
+                "message": "SMTP login failed — logged instead.",
                 "timestamp": timestamp
             }
 
-    else:
-        # Fallback when credentials are missing (development mode)
-        print("Sensitive query detected (logged instead of sending email):")
+        try:
+            server.send_message(msg)
+            print("✓ Email sent successfully")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+            return {
+                "message": "Failed during sending — logged instead.",
+                "timestamp": timestamp
+            }
+        finally:
+            server.quit()
+
+    except Exception as e:
+        print(f"Email connection error: {e}")
+        print("Message logged locally instead:")
         print(body)
 
-    # Final success response returned to the client
+        return {
+            "message": "Email server error — logged instead.",
+            "timestamp": timestamp
+        }
+
+    # -------------------------------------------------------------
+    # SUCCESS
+    # -------------------------------------------------------------
     return {
-        "message": "Admin notified (or logged)",
+        "message": "Admin notified successfully.",
         "timestamp": timestamp
     }

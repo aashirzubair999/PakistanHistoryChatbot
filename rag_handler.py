@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from typing import List
+from typing import List, Tuple, Dict, Any
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.documents import Document
@@ -12,18 +12,26 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 # -------------------------------------------------------------
-# Load vector stores
+# Load vector stores (SAFE VERSION)
 # -------------------------------------------------------------
-def load_vectordbs(base_dir="vectorstores"):
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+def load_vectordbs(base_dir="vectorstores") -> Dict[str, Any]:
+    try:
+        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    except Exception as e:
+        print(f" Failed to load embeddings: {e}")
+        return {"txt": None, "docx": None, "pdf": None}
 
     def load_db(name):
-        path = os.path.join(base_dir, f"{name}_vector_db")
-        if os.path.exists(path):
-            print(f"✓ Loaded {name} DB")
-            return Chroma(persist_directory=path, embedding_function=embeddings)
-        else:
-            print(f"✗ Not found: {path}")
+        try:
+            path = os.path.join(base_dir, f"{name}_vector_db")
+            if os.path.exists(path):
+                print(f"✓ Loaded {name} DB")
+                return Chroma(persist_directory=path, embedding_function=embeddings)
+            else:
+                print(f"Not found: {path}")
+                return None
+        except Exception as e:
+            print(f"Error loading {name} DB: {e}")
             return None
 
     return {
@@ -34,17 +42,22 @@ def load_vectordbs(base_dir="vectorstores"):
 
 
 # -------------------------------------------------------------
-# QUERY SINGLE VECTORSTORE
+# QUERY SINGLE VECTORSTORE (SAFE VERSION)
 # -------------------------------------------------------------
-def query_single_store(vectordb, user_query, llm, k=3):
+def query_single_store(vectordb, user_query: str, llm, k=3):
     if vectordb is None:
-        return None, None  # skip
+        return None, None  # store missing → skip
 
-    docs = vectordb.similarity_search(user_query, k=k)
-    if not docs:
+    try:
+        docs = vectordb.similarity_search(user_query, k=k)
+    except Exception as e:
+        print(f" similarity_search failed: {e}")
         return None, None
 
-    # Prompt forces LLM to declare FOUND or NOT_FOUND
+    if not docs:
+        return None, None  # no matching docs
+
+    # LLM prompt
     prompt = ChatPromptTemplate.from_messages([
         ("system",
          "You must answer STRICTLY using the provided documents.\n"
@@ -52,52 +65,69 @@ def query_single_store(vectordb, user_query, llm, k=3):
          "FOUND: <answer>\n\n"
          "If NOT found, reply exactly:\n"
          "NOT_FOUND\n\n"
-         "Documents:\n{context}"
-         ),
+         "Documents:\n{context}"),
         ("human", "{question}")
     ])
 
-    chain = create_stuff_documents_chain(llm, prompt)
+    try:
+        chain = create_stuff_documents_chain(llm, prompt)
+        result = chain.invoke({"context": docs, "question": user_query})
+    except Exception as e:
+        print(f"LLM chain error: {e}")
+        return None, None
 
-    result = chain.invoke({
-        "context": docs,
-        "question": user_query
-    })
+    if not result:
+        return None, None
 
-    output = result.strip()
+    output = str(result).strip()
 
     if output.startswith("FOUND:"):
         answer = output.replace("FOUND:", "").strip()
 
-        # Extract unique source names
-        seen = set()
+        # extract unique sources safely
         sources = []
+        seen = set()
 
         for d in docs:
-            src = d.metadata.get("source") or d.metadata.get("file") or "Unknown"
+            try:
+                src = d.metadata.get("source") or d.metadata.get("file") or "Unknown"
+            except Exception:
+                src = "Unknown"
+
             if src not in seen:
                 seen.add(src)
                 sources.append(src)
 
         return answer, sources
 
-    return None, None  # means NOT_FOUND
+    return None, None
 
 
 # -------------------------------------------------------------
-# MASTER QUERY: TXT → DOCX → PDF
+# MASTER QUERY: TXT → DOCX → PDF (SAFE VERSION)
 # -------------------------------------------------------------
-def query_rag(user_query, vectordbs):
-    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+def query_rag(user_query: str, vectordbs: dict):
+    try:
+        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+    except Exception as e:
+        print(f" Failed to initialize LLM: {e}")
+        return {
+            "answer": None,
+            "sources": [],
+            "from": None,
+            "error": "LLM initialization failed"
+        }
 
     search_order = ["txt", "docx", "pdf"]
 
     for store_name in search_order:
-        vectordb = vectordbs.get(store_name)
-
-        print(f"Searching in: {store_name}")
-
-        answer, sources = query_single_store(vectordb, user_query, llm)
+        try:
+            print(f"Searching in: {store_name}")
+            vectordb = vectordbs.get(store_name)
+            answer, sources = query_single_store(vectordb, user_query, llm)
+        except Exception as e:
+            print(f" Error in store '{store_name}': {e}")
+            continue
 
         if answer:  # FOUND
             return {
@@ -106,10 +136,9 @@ def query_rag(user_query, vectordbs):
                 "from": store_name
             }
 
-    # No answers anywhere
+    # No results anywhere
     return {
-    "answer": None,
-    "sources": [],
-    "from": None
-}
-
+        "answer": None,
+        "sources": [],
+        "from": None
+    }
