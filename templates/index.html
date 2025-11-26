@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Expedition Meister Chatbot</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins">
+  <style>
+    body {
+      overflow-y: hidden;
+      font-family: 'Poppins';
+      background-color: #f2f3ff;
+      background-size: cover;
+      min-height: 100vh;
+      margin: 0;
+      display: block;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .container {
+      display: inline-block;
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 15px;
+      height: calc(87vh - 40px);
+      max-width: 1500px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      height: 7vh;
+      margin: 20px 0px;
+      max-width: calc(70vw + 40px);
+      margin-left: 10%;
+      margin: 10px auto;
+    }
+
+    .header .logo {
+      height: 5vh;
+    }
+
+    .header .reset {
+      height: 30px;
+      margin-left: auto;
+    }
+
+    .chatbox {
+      margin: auto;
+      height: calc(80vh - 60px);
+      width: calc(70vw + 20px);
+      overflow-y: auto;
+      padding: 10px;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      text-align: left;
+      margin-bottom: 10px;
+      margin-right: 5vw;
+    }
+
+    .message .content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message .content .text {
+      background-color: #fff;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    .user-message {
+      justify-content: flex-end;
+    }
+
+    .user-message .content .text {
+      margin-right: -5vw;
+      margin-left: 5vw;
+      background-color: #091685;
+      color: #fff;
+    }
+
+    .footer {
+      background-color: #f5f5f5;
+      display: flex;
+      height: 7vh;
+      width: 70vw;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 0px 20px;
+    }
+
+    .footer input {
+      flex: 1;
+      padding: 16px 12px;
+      border: none;
+      border-radius: 4px;
+      resize: none;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .footer button {
+      background-color: #091685;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 14px 20px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .footer button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .footer {
+        width: 85vw;
+        padding: 0px 10px;
+      }
+
+      .container {
+        background-color: #f5f5f5;
+        padding: 0px;
+        max-width: 95vw;
+        height: 88vh;
+      }
+
+      .chatbox {
+        height: calc(88vh - 90px);
+        width: auto;
+      }
+
+      .text {
+        font-size: 14px;
+      }
+
+      .footer input {
+        padding: 13px 9px;
+        font-size: 14px;
+      }
+
+      .footer button {
+        padding: 12px 16px;
+        margin-left: 7px;
+        font-size: 14px;
+      }
+
+      .header {
+        height: 7vh;
+        margin: 10px 0px;
+        max-width: 90vw;
+        margin-left: 5%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <b>Expedition Meister Chatbot</b>
+  </div>
+
+  <div class="container">
+    <div class="chatbox" id="chatbox">
+      <div class="message">
+        <div class="content">
+          <span class="text">
+            Hello, I am John your personal buying assistant.
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <input id="text-field" placeholder="Enter your sentence here..."></input>
+      <button id="send-msg" onclick="handleClick()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Configuration - Backend URL (same server since FastAPI serves this HTML)
+    const API_BASE_URL = window.location.origin;  // Automatically uses the same host
+    
+    var messages_array = [
+      {
+        "role": 'user',
+        "content": 'Hello!'
+      },
+      {
+        "role": 'ai',
+        "content": 'Hello, I am John your personal buying assistant.'
+      }
+    ];
+
+    var isLoading = false;
+
+    function handleClick() {
+      var inputField = document.getElementById('text-field');
+      var sendButton = document.getElementById('send-msg');
+      var message = inputField.value.trim();
+      
+      if (message === '' || isLoading) {
+        return;
+      }
+      
+      // Disable input while loading
+      isLoading = true;
+      sendButton.disabled = true;
+      inputField.disabled = true;
+      
+      // Add user message to display AND array immediately
+      addMessage('user', message);
+      
+      // Clear input field
+      inputField.value = '';
+      
+      // Call function to handle bot response
+      handleBotResponse(message);
+    }
+    
+    function handleBotResponse(message) {
+      // Show loading message
+      addLoadingMessage();
+
+      console.log('=== Building Chat History ===');
+      console.log('messages_array before building history:', JSON.stringify(messages_array, null, 2));
+
+      // Build chat history - exclude the current message (last user message)
+      let chat_history = [];
+      for (let i = 0; i < messages_array.length - 1; i++) {  // -1 to exclude current message
+        if (messages_array[i].role === 'user') {
+          let userMsg = messages_array[i].content;
+          let aiMsg = (i + 1 < messages_array.length && messages_array[i + 1].role === 'ai') 
+                      ? messages_array[i + 1].content 
+                      : "";
+          chat_history.push({
+            user: userMsg,
+            AI: aiMsg
+          });
+        }
+      }
+      
+      console.log('Built chat_history:', JSON.stringify(chat_history, null, 2));
+
+      let jsonData = {
+        query: message,
+        chat_history: chat_history
+      };
+
+      console.log('Sending to backend:', JSON.stringify(jsonData, null, 2));
+
+      fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(jsonData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Response:', data);
+        removeLoadingMessage();
+        
+        // Extract AI response
+        const aiResponse = data.response?.AI || data.message || 'Sorry, I could not process your request.';
+        
+        // Add ONLY bot response to display and array (user message already added)
+        addMessage('bot', aiResponse);
+        
+        console.log('Updated messages_array:', messages_array);
+        
+        // Re-enable input
+        isLoading = false;
+        document.getElementById('send-msg').disabled = false;
+        document.getElementById('text-field').disabled = false;
+        document.getElementById('text-field').focus();
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        removeLoadingMessage();
+        addMessage('bot', 'Sorry, there was an error connecting to the server. Please try again.');
+        
+        // Re-enable input
+        isLoading = false;
+        document.getElementById('send-msg').disabled = false;
+        document.getElementById('text-field').disabled = false;
+      });
+    }
+
+    function addMessage(sender, text) {
+      var chatbox = document.getElementById('chatbox');
+      var messageContainer = document.createElement('div');
+      messageContainer.className = 'message';
+      
+      if (sender === 'user') {
+        messageContainer.classList.add('user-message');
+        // Add to messages_array
+        messages_array.push({
+          "role": "user",
+          "content": text
+        });
+      } else if (sender === 'bot') {
+        // Add to messages_array
+        messages_array.push({
+          "role": "ai",
+          "content": text
+        });
+      }
+      
+      var contentContainer = document.createElement('div');
+      contentContainer.className = 'content';
+      
+      var textElement = document.createElement('span');
+      textElement.className = 'text';
+      textElement.textContent = text;
+      
+      contentContainer.appendChild(textElement);
+      messageContainer.appendChild(contentContainer);
+      chatbox.appendChild(messageContainer);
+      
+      // Scroll to the bottom
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function addLoadingMessage() {
+      var chatbox = document.getElementById('chatbox');
+      var messageContainer = document.createElement('div');
+      messageContainer.className = 'message loading-message';
+      
+      var contentContainer = document.createElement('div');
+      contentContainer.className = 'content';
+      
+      var textElement = document.createElement('span');
+      textElement.className = 'text';
+      textElement.textContent = 'Loading...';
+      
+      contentContainer.appendChild(textElement);
+      messageContainer.appendChild(contentContainer);
+      chatbox.appendChild(messageContainer);
+      
+      // Scroll to the bottom
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function removeLoadingMessage() {
+      const loadingMessage = document.querySelector('.loading-message');
+      if (loadingMessage) {
+        loadingMessage.remove();
+      }
+    }
+
+    // Enter key support
+    document.addEventListener("DOMContentLoaded", function() {
+      var input = document.getElementById("text-field");
+      
+      input.addEventListener("keypress", function(event) {
+        if (event.key === "Enter" && !isLoading) {
+          event.preventDefault();
+          document.getElementById("send-msg").click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

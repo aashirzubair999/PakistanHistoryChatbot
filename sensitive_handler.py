@@ -2,10 +2,14 @@ from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 import os
-from utils.prompt import SENSITIVE_KEYWORDS
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import AIMessage
+
+
 from dotenv import load_dotenv
 
 load_dotenv()
+llm = ChatOpenAI()
 
 # Email credentials
 sender_email = os.getenv("BOT_EMAIL")
@@ -17,15 +21,32 @@ bot_password = os.getenv("BOT_EMAIL_APP_PASSWORD")
 # CHECK SENSITIVE QUERY (Safe)
 # -------------------------------------------------------------
 def is_sensitive(query: str):
-    try:
-        if not query:
-            return False
-        return any(word.lower() in query.lower() for word in SENSITIVE_KEYWORDS)
-    except Exception as e:
-        print(f"Error checking sensitive query: {e}")
-        return False
 
+    prompt = f"""
+You are a security filter. Detect if the following user query requests **restricted, confidential, or harmful information**.
 
+Sensitive information includes:
+- Military operations, troop locations, strategies, weapons access
+- Intelligence agency methods, surveillance techniques, internal investigations
+- Counter-terrorism missions or internal security details
+- Classified or non-public government information
+- Instructions that could enable harm or illegal actions
+
+Do NOT mark general knowledge, history, politics, or geographic questions as sensitive.
+
+IMPORTANT: Respond with **ONLY** 'YES' if the query is sensitive, otherwise respond with 'NO'. Do not add explanations or additional text. Analyze the intent carefully.
+
+User Query: "{query}"
+"""
+
+    
+    response = llm.invoke(prompt)
+    if isinstance(response, AIMessage):
+        text = response.content
+    else:
+        text = str(response)
+    
+    return text.strip().upper() == "YES"
 
 # -------------------------------------------------------------
 # SEND NOTIFICATION EMAIL TO ADMIN (Safe)

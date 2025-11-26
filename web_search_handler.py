@@ -32,6 +32,8 @@ def query_web(user_query: str):
             {SYSTEM_PROMPT}
             The user asked: "{user_query}".
             Search for real-time news related to Pakistan only.
+            The answer should be short and concise.
+            and the source link should be separated in brackets and must be mentioned all at the end .
             Summarize the results clearly.
             """
         except Exception as e:
